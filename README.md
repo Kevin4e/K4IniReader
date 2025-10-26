@@ -47,11 +47,6 @@ int resY = iniReader.read<int>("Resolution", "ResY", 0);
 
 // HUD
 float scale = iniReader.read<float>("HUD", "Scale", 1.00);
-
-/*
- *  Here 'data_type' can be an integral or non-integral data type.
- *  If the reading process failed, returns 'default_value', and it must match 'data_type'.
- */
 ```
 
 ## Credits
