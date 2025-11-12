@@ -32,7 +32,7 @@ v-sync = off ; Toggle v-sync
 ### Defining the INI reader object:
 
 ```cpp
-K4INIReader iniReader("Config.ini", 20, 10);
+K4IniReader iniReader("Config.ini", 20, 10);
 /*
  *  'Config.ini' is the .ini file to read the values from.
  *  '20' defines the number of sections inside of 'Config.ini' (optional, 32 by default).
