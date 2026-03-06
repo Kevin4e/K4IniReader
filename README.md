@@ -2,43 +2,50 @@
 A lightweight cross-platform INI reader in C++
 
 ## Overview
-K4IniReader is a **header-only** library designed for fast reading of .ini configuration files.
+K4IniReader is a **header-only** library designed for fast reading of `.ini` configuration files.
 
 **C++17+** is required.
 
 ### Features:
-- Supports section headers (`[Section]`);
-- Handles inline comments (`//`, `;`, `#`);
-- Can read integral or non-integral data type (`int`, `float`, `std::string`, etc.) via templates.
+- Supports section headers: `[Section]`.
+- Inline comment support: `//`, `;`, `#`.
+- Case-insensitive section and key names.
+- Reads numeric, string, or boolean values via templates (`int`, `float`, `std::string`, `bool` etc.).
+- Boolean parsing recognizes:
+  - `true`, `1`, `on`, `yes` → `true`
+  - `false`, `0`, `off`, `no` → `false`
+- Fallback to **default values** for missing keys, sections, or invalid conversions.
+- Lightweight memory optimization via optional pre-allocation of sections/keys.
 
 ## Usage
 
-### Example .ini file
+### Example `.ini` file
 ```
 // Config.ini
 
 [Resolution]
 ResX = 1920 // Horizontal resolution
-ResY = 1080 ;  Vertical resolution
+ResY = 1080 ; Vertical resolution
 
 [HUD]
 Scale = 1.00 # HUD's scale
 
 [Graphics]
-gpu = vulkan // Sets the GPU API to Vulkan
+gpu = Vulkan // Sets the GPU API
 v-sync = off ; Toggle v-sync
 ```
 
-### Defining the INI reader object:
+### Initializing the INI reader:
 
 ```cpp
+#include "K4IniReader.hpp"
+
 K4IniReader iniReader("Config.ini", 20, 10);
 /*
- *  'Config.ini' is the .ini file to read the values from.
- *  '20' defines the number of sections inside of 'Config.ini' (optional, 32 by default).
- *  '10' defines the minimum number of keys inside of any section (optional, 8 by default).
- *
- *   These optional parameters are used for pre-allocating hash map memory, which is a small optimization.
+ *  Parameters:
+ *  - "Config.ini" → Path to the INI file
+ *  - 20 → Optional: pre-allocate 20 sections (default = 0, no pre-allocation)
+ *  - 10 → Optional: pre-allocate 10 keys per section (default = 0, no pre-allocation)
  */
 ```
 
@@ -49,16 +56,33 @@ int resX = iniReader.read<int>("Resolution", "ResX", 0);
 int resY = iniReader.read<int>("Resolution", "ResY", 0);
 
 // HUD
-float scale = iniReader.read<float>("HUD", "Scale", 1.00);
+float scale = iniReader.read<float>("HUD", "Scale", 1.00f);
 
 // Graphics
 std::string gpu = iniReader.read<std::string>("Graphics", "gpu", "any");
 bool vsync = iniReader.read<bool>("Graphics", "v-sync", false);
 ```
 
+### Checking if the INI file was loaded successfully.
+```cpp
+if (iniReader) {
+    // File loaded correctly
+} else {
+    // Failed to load file
+}
+```
+
 ## Notes
-- When reading a boolean, only **`true`**, **`1`**, **`on`** and **`yes`** return `true`.
-- Unhandled types (e.g. `struct`, `class`, **inheritance**/**wrappers** of the supported types) will make the reading operation return the default value.
+- Section and key names are **case-insensitive**.
+- Boolean parsing **always** lowers the boolean strings.
+- The `toLowerString` parameter in `read<std::string>` allows forcing the returned string to lowercase:
+```cpp
+std::string gpuLower = iniReader.read<std::string>("Graphics", "gpu", "any", true);
+```
+- Conditions where the **default value** is returned:
+  - Unhandled types (e.g. `struct`, `class`, **inheritance**/**wrappers** of the supported types).
+  - Unrecognized boolean strings.
+  - Numeric conversion failures.
 
 ## Credits
 - **Kevin4e** - Author of the library.
