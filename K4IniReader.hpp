@@ -2,8 +2,8 @@
 
 /*
  *  K4IniReader - Lightweight cross-platform INI reader
- *  Version v1.2.0
- *  GitHub page: https://github.com/Kevin4e/K4IniReader
+ *  Version v1.2.1
+ *  GitHub repository: https://github.com/Kevin4e/K4IniReader
  *  Author: Kevin4e
  *
  *  Target: C++17+
@@ -32,21 +32,23 @@
  *  SOFTWARE.
  */ 
 
-#include <unordered_map>
-#include <string>
-#include <fstream>
-#include <cctype>
 #include <algorithm>
+#include <cctype>
 #include <charconv>
+#include <cstddef>
+#include <fstream>
+#include <string>
+#include <string_view>
 #include <type_traits>
+#include <unordered_map>
 
 class K4IniReader {
 private:
-    std::unordered_map<std::string, std::unordered_map<std::string, std::string>> data;
-    bool loaded = false;
+    std::unordered_map<std::string, std::unordered_map<std::string, std::string>> data{};
+    bool loaded{ false };
 
     // Removes leading and trailing whitespaces from a string.
-    static void trim(std::string& s) noexcept {
+    static void trim(std::string& s) {
         // Trim from start
         s.erase(s.begin(), std::find_if(s.begin(), s.end(), [](unsigned char c) { return !std::isspace(c); }));
 
@@ -58,44 +60,47 @@ private:
     // Supports comment markers: "//", ";", and "#". 
     // If multiple markers are present, removes from the first one found.
     static void removeInlineComment(std::string& s) noexcept {
-        const size_t semicolonOrHashtagPos = s.find_first_of(";#");
-        const size_t doubleSlashPos = s.find("//");
+        const std::size_t semicolonOrHashtagPos{ s.find_first_of(";#") };
+        const std::size_t doubleSlashPos{ s.find("//") };
 
-        if (semicolonOrHashtagPos != std::string::npos) {
-            if (doubleSlashPos != std::string::npos)
+        if (semicolonOrHashtagPos != std::string::npos) { // Semicolon or hashtag was found
+            if (doubleSlashPos != std::string::npos) // Also '//' was found
+                // Start removing from whatever marker comes before
                 s.erase((std::min)(semicolonOrHashtagPos, doubleSlashPos)); // min() -> (min)() to avoid macro conflicts with Windows.h library
             else
+                // No '//' found, erase from semicolon or hashtag
                 s.erase(semicolonOrHashtagPos);
         }
         else {
+            // Erase from '//' if it is at the beginning of the string OR preceded by whitespace
             if (doubleSlashPos != std::string::npos && (doubleSlashPos == 0 || std::isspace(static_cast<unsigned char>(s[doubleSlashPos - 1]))))
                 s.erase(doubleSlashPos);
         }
     }
 
     // Lowers all the characters of a string
-    static void lower(std::string& s) noexcept {
+    static void lower(std::string& s) {
         std::transform(s.begin(), s.end(), s.begin(), [](unsigned char c) { return std::tolower(c); });
     }
 
     // Determines if a string is empty or consists solely of whitespace
-    static bool isEmpty(const std::string& s) noexcept {
+    static bool isEmpty(std::string_view s) noexcept {
         return std::all_of(s.begin(), s.end(),
             [](unsigned char c) { return std::isspace(c); });
     }
 
     // Searches for a key in a section.
     // Returns true if found and stores its value in 'out'.
-    bool find(const std::string& s, const std::string& k, std::string& out) const noexcept {
-        std::string sCopy = s;
-        std::string kCopy = k;
+    bool find(std::string_view section, std::string_view key, std::string& out) const {
+        std::string sectionLowercase{ section };
+        std::string keyLowercase{ key };
 
-        lower(sCopy);
-        const auto sectionIt = data.find(sCopy);
+        lower(sectionLowercase);
+        const auto sectionIt{ data.find(sectionLowercase) };
         if (sectionIt == data.end()) return false; // The section was not found
 
-        lower(kCopy);
-        const auto keyIt = sectionIt->second.find(kCopy);
+        lower(keyLowercase);
+        const auto keyIt{ sectionIt->second.find(keyLowercase) };
         if (keyIt == sectionIt->second.end()) return false; // The key was not found
 
         out = keyIt->second; // Get the value
@@ -105,8 +110,8 @@ private:
 
 public:
     // Extracts all the sections, keys, and their values from a .ini file.
-    K4IniReader(const std::string& fileName, size_t nSections = 0, size_t nKeys = 0) {
-        std::ifstream file(fileName);
+    K4IniReader(const std::string& fileName, std::size_t nSections = 0, std::size_t nKeys = 0) {
+        std::ifstream file{ fileName };
 
         loaded = file.is_open();
         if (!loaded) return; // Failed to open file for reading
@@ -124,69 +129,72 @@ public:
 
             if (isEmpty(line)) continue; // Skips empty lines
 
-            const size_t posEqualSing = line.find('=');  // Finds the position of the equal sign
-
             if (line.front() == '[') { // If the first character is an open square bracket, checks if further ahead there's a close one.
-                const size_t posBracketEnd = line.find(']');
+                const std::size_t posBracketEnd{ line.find(']') };
                 if (posBracketEnd == std::string::npos) continue; // If it wasn't found, skips to the next line
 
-                std::string sectionExtracted = line.substr(1, posBracketEnd - 1); // Extract the content between the two brackets
+                std::string sectionExtracted{ line.substr(1, posBracketEnd - 1) }; // Extract the content between the two brackets
                 trim(sectionExtracted); // Remove leading and trailing whitespaces
                 if (sectionExtracted.empty()) continue; // Exit if the section is empty
                 lower(sectionExtracted);
                 currentSection = sectionExtracted; // Any key read from now on will be part of the section extracted (until a new section is found)
                 data[currentSection].reserve(nKeys); // Reserve keys for this section
             }
-            else if (posEqualSing != std::string::npos && !currentSection.empty()) { // If there's an equal sign and we're in a section
-                std::string keyExtracted = line.substr(0, posEqualSing); // Extracts the key
-                trim(keyExtracted); // Removes leading and trailing whitespaces
-                if (keyExtracted.empty()) continue; // Exit if the key is empty
-                lower(keyExtracted);
+            else {
+                const std::size_t posEqualSign{ line.find('=') }; // Finds the position of the equal sign
 
-                std::string value = line.substr(posEqualSing + 1); // Extracts the value
-                trim(value); // Removes leading and trailing whitespaces
+                if (posEqualSign != std::string::npos && !currentSection.empty()) { // If there's an equal sign and we're in a section
+                    std::string keyExtracted{ line.substr(0, posEqualSign) }; // Extracts the key
+                    trim(keyExtracted); // Removes leading and trailing whitespaces
+                    if (keyExtracted.empty()) continue; // Exit if the key is empty
+                    lower(keyExtracted);
 
-                data[currentSection][keyExtracted] = value; // Inserts the key-value pair into the current section
+                    std::string value{ line.substr(posEqualSign + 1) }; // Extracts the value
+                    trim(value); // Removes leading and trailing whitespaces
+
+                    data[currentSection][keyExtracted] = value; // Inserts the key-value pair into the current section
+                }
             }
         }
     }
 
     // Reads a value of a key from a section.
     // 'toLower' parameter lowers all the letters of the value, effective for strings and booleans.
-    template<typename T>
-    T read(const std::string& section, const std::string& key, T defaultValue, bool toLowerString = false) const noexcept {
+    template <typename T>
+    T read(std::string_view section, std::string_view key, T defaultValue, bool toLowerString = false) const {
         std::string outValue{};
         if (!find(section, key, outValue))
-            return defaultValue; // Exit the section or key wasn't found
+            return defaultValue; // Section or key wasn't found
 
         if constexpr (std::is_same_v<T, bool>) { // If T is a boolean
             lower(outValue);
 
             if (outValue == "true"  || outValue == "1" || outValue == "on" || outValue == "yes")
                 return true;
+
             if (outValue == "false" || outValue == "0" || outValue == "off" || outValue == "no")
                 return false;
 
             return defaultValue;
         }
 
-        else if constexpr (std::is_same_v<T, char>) // If T is a char or a wide one
+        else if constexpr (std::is_same_v<T, char>) // If T is a char
             return outValue.empty() ? defaultValue : outValue[0];
 
         else if constexpr (std::is_arithmetic_v<T>) { // If T is an arithmetic type (numeric)
-            T outParsedValue = defaultValue;
+            T outParsedValue{ defaultValue };
 
-            const size_t len = outValue.size();
-            const char* start = outValue.data();
-            const char* end = outValue.data() + len;
+            const std::size_t len{ outValue.size() };
+            const char* start{ outValue.data() };
+            const char* end{ outValue.data() + len };
 
-            std::from_chars_result conversionResult;
+            std::from_chars_result conversionResult{};
 
             if constexpr (std::is_integral_v<T>) { // If T is an integer data type
-                int base = 10;
+                int base{10};
 
                 if (len >= 2 && outValue[0] == '0') {
-                    const char p = std::tolower(static_cast<unsigned char>(outValue[1]));
+                    const char p{ static_cast<char>(std::tolower(static_cast<unsigned char>(outValue[1]))) };
 
                     switch (p) {
                         case 'b': start += 2; base =  2; break; // Binary
@@ -201,12 +209,12 @@ public:
                 conversionResult = std::from_chars(start, end, outParsedValue); // Force base 10 conversion
 
             if (conversionResult.ec != std::errc() || conversionResult.ptr != end)
-                return defaultValue;
+                return defaultValue; // Conversion error
 
             return outParsedValue;
         }
 
-        else if constexpr (std::is_same_v<T, std::string>) { // If T is a string
+        else if constexpr (std::is_same_v<T, std::string>) { // If T is std::string
             if (toLowerString)
                 lower(outValue);
 
