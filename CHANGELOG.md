@@ -1,5 +1,13 @@
 # Changelog
 
+## [v1.2.1] - 2026-08-09
+
+### Changed
+
+- General code refinements.
+
+---
+
 ## [v1.2.0] - 2026-02-05
 
 ### Added
