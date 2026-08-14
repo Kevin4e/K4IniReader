@@ -1,12 +1,15 @@
 # K4IniReader
+
 A lightweight cross-platform INI reader in C++
 
 ## Overview
+
 K4IniReader is a **header-only** library designed for fast reading of `.ini` configuration files.
 
 **C++17+** is required.
 
-### Features:
+### Features
+
 - Supports section headers: `[Section]`.
 - Inline comment support: `//`, `;`, `#`.
 - Case-insensitive section and key names.
@@ -20,6 +23,7 @@ K4IniReader is a **header-only** library designed for fast reading of `.ini` con
 ## Usage
 
 ### Example `.ini` file
+
 ```
 // Config.ini
 
@@ -35,7 +39,7 @@ gpu = Vulkan // Sets the GPU API
 v-sync = off ; Toggle v-sync
 ```
 
-### Initializing the INI reader:
+### Initialization of the INI reader
 
 ```cpp
 #include "K4IniReader.hpp"
@@ -49,7 +53,18 @@ K4IniReader iniReader("Config.ini", 20, 10);
  */
 ```
 
-### Reading values from the .ini file
+### Checking whether the INI file was loaded successfully
+
+```cpp
+if (iniReader) {
+    // File loaded correctly
+} else {
+    // Failed to load file
+}
+```
+
+### Reading values from the `.ini` file
+
 ```cpp
 // Resolution
 int resX = iniReader.read<int>("Resolution", "ResX", 0);
@@ -63,16 +78,8 @@ std::string gpu = iniReader.read<std::string>("Graphics", "gpu", "any");
 bool vsync = iniReader.read<bool>("Graphics", "v-sync", false);
 ```
 
-### Checking if the INI file was loaded successfully.
-```cpp
-if (iniReader) {
-    // File loaded correctly
-} else {
-    // Failed to load file
-}
-```
-
 ## Notes
+
 - Section and key names are **case-insensitive**.
 - Boolean parsing **always** lowers the boolean strings.
 - The `toLowerString` parameter in `read<std::string>` allows forcing the returned string to lowercase:
@@ -84,5 +91,10 @@ std::string gpuLower = iniReader.read<std::string>("Graphics", "gpu", "any", tru
   - Unrecognized boolean strings.
   - Numeric conversion failures.
 
+## License
+
+- See [LICENSE](LICENSE)
+
 ## Credits
-- **Kevin4e** - Author of the library.
+
+- **[Kevin4e](https://github.com/Kevin4e/)** - Author of the library
